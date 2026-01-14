@@ -682,13 +682,8 @@
 
                     <h3 style="margin-bottom: 15px;">Letzte Aktivitäten</h3>
                     <div class="activity-log" id="activityLog">
-                        <div class="activity-item">
-                            <div class="activity-time">Heute, 12:34</div>
-                            <div class="activity-text">Bot wurde gestartet</div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-time">Gestern, 15:22</div>
-                            <div class="activity-text">Gewinn: +$5.50 (BTC Market)</div>
+                        <div style="text-align: center; padding: 20px; color: #94a3b8;">
+                            Lade Aktivitäten...
                         </div>
                     </div>
                 </div>
@@ -1077,7 +1072,7 @@
                 
                 if (response.ok) {
                     currentUser = result.user;
-                    currentUser.password = data.password; // Store for admin access
+                    currentUser._password = data.password; // Store for refresh
                     showDashboard();
                     closeModals();
                 } else {
@@ -1157,6 +1152,8 @@
             
             // Load stats
             loadUserStats();
+            // Load activities
+            loadActivities();
             // Initialize charts
             initCharts();
         }
@@ -1280,6 +1277,55 @@
             };
         }
 
+        // Load activities
+        function loadActivities() {
+            const activities = currentUser.activities || [];
+            const activityLog = document.getElementById('activityLog');
+            
+            if (activities.length === 0) {
+                activityLog.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #94a3b8;">
+                        Noch keine Aktivitäten
+                    </div>
+                `;
+                return;
+            }
+            
+            activityLog.innerHTML = '';
+            
+            activities.slice(0, 10).forEach(activity => {
+                const date = new Date(activity.timestamp);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                
+                let timeStr;
+                if (diffMins < 1) {
+                    timeStr = 'Gerade eben';
+                } else if (diffMins < 60) {
+                    timeStr = `Vor ${diffMins} Minute${diffMins > 1 ? 'n' : ''}`;
+                } else if (diffHours < 24) {
+                    timeStr = `Vor ${diffHours} Stunde${diffHours > 1 ? 'n' : ''}`;
+                } else if (diffDays === 1) {
+                    timeStr = 'Gestern, ' + date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                } else if (diffDays < 7) {
+                    timeStr = date.toLocaleDateString('de-DE', { weekday: 'long', hour: '2-digit', minute: '2-digit' });
+                } else {
+                    timeStr = date.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                }
+                
+                const item = document.createElement('div');
+                item.className = 'activity-item';
+                item.innerHTML = `
+                    <div class="activity-time">${timeStr}</div>
+                    <div class="activity-text">${activity.message}</div>
+                `;
+                activityLog.appendChild(item);
+            });
+        }
+
         // Load user stats
         function loadUserStats() {
             const stats = currentUser.stats || {};
@@ -1316,6 +1362,9 @@
             if (profitChart || historyChart) {
                 initCharts();
             }
+            
+            // Update activities
+            loadActivities();
         }
 
         // Show section
@@ -1640,7 +1689,34 @@ Total,${stats.totalProfit || 0},${stats.totalTrades || 0}`;
         }
 
         // Refresh stats
-        function refreshStats() {
+        async function refreshStats() {
+            // Reload user data from server if we have password stored
+            if (currentUser && currentUser._password) {
+                try {
+                    const response = await fetch(API_URL + '/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: currentUser.username,
+                            password: currentUser._password
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        currentUser = result.user;
+                        currentUser._password = currentUser._password; // Preserve password
+                        loadUserStats();
+                        alert('Stats aktualisiert!');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Refresh error:', error);
+                }
+            }
+            
+            // Fallback: just reload from current data
             loadUserStats();
             alert('Stats aktualisiert!');
         }

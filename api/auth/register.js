@@ -58,6 +58,7 @@ export default async function handler(req, res) {
     const encryptedKey = Buffer.from(private_key).toString('base64');
     
     // Create user object
+    const now = new Date().toISOString();
     const user = {
       username: usernameLower,
       email: email.toLowerCase(),
@@ -66,7 +67,7 @@ export default async function handler(req, res) {
       funderAddress: funder_address,
       theme: 'Midnight',
       role: 'user',
-      createdAt: new Date().toISOString(),
+      createdAt: now,
       lastLogin: null,
       stats: {
         totalProfit: 0,
@@ -80,7 +81,14 @@ export default async function handler(req, res) {
         solTrades: 0,
         xrpProfit: 0,
         xrpTrades: 0
-      }
+      },
+      activities: [
+        {
+          type: 'account_created',
+          message: 'Account wurde erstellt',
+          timestamp: now
+        }
+      ]
     };
     
     // Save to Blob

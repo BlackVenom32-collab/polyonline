@@ -55,7 +55,23 @@ export default async function handler(req, res) {
     const privateKey = Buffer.from(userData.encryptedPrivateKey, 'base64').toString();
     
     // Update lastLogin
-    userData.lastLogin = new Date().toISOString();
+    const now = new Date().toISOString();
+    userData.lastLogin = now;
+    
+    // Add login activity
+    if (!userData.activities) {
+      userData.activities = [];
+    }
+    userData.activities.unshift({
+      type: 'login',
+      message: 'Bot wurde gestartet',
+      timestamp: now
+    });
+    
+    // Keep only last 50 activities
+    if (userData.activities.length > 50) {
+      userData.activities = userData.activities.slice(0, 50);
+    }
     
     // Save updated user data
     await put(
@@ -81,7 +97,8 @@ export default async function handler(req, res) {
         role: userData.role,
         stats: userData.stats,
         createdAt: userData.createdAt,
-        lastLogin: userData.lastLogin
+        lastLogin: userData.lastLogin,
+        activities: userData.activities || []
       }
     });
     
