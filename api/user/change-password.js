@@ -1,4 +1,4 @@
-// api/auth/login.js
+// api/user/change-password.js
 import { head, put } from '@vercel/blob';
 import crypto from 'crypto';
 
@@ -17,47 +17,54 @@ export default async function handler(req, res) {
   }
   
   try {
-    const { username, password } = req.body;
+    const { username, currentPassword, newPassword } = req.body;
     
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+    if (!username || !currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'All fields required' });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
     }
     
     const usernameLower = username.toLowerCase();
     
-    // Get user blob URL
+    // Get user blob
     let blobInfo;
     try {
       blobInfo = await head(`users/${usernameLower}.json`);
     } catch (e) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'User not found' });
     }
     
-    // Fetch user data from blob URL
+    // Fetch current user data
     const response = await fetch(blobInfo.url);
     if (!response.ok) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'User not found' });
     }
     
     const userData = await response.json();
     
-    // Verify password
-    const passwordHash = crypto
+    // Verify current password
+    const currentPasswordHash = crypto
       .createHash('sha256')
-      .update(password)
+      .update(currentPassword)
       .digest('hex');
     
-    if (userData.passwordHash !== passwordHash) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    if (userData.passwordHash !== currentPasswordHash) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
     }
     
-    // Decrypt private key
-    const privateKey = Buffer.from(userData.encryptedPrivateKey, 'base64').toString();
+    // Hash new password
+    const newPasswordHash = crypto
+      .createHash('sha256')
+      .update(newPassword)
+      .digest('hex');
     
-    // Update lastLogin
-    userData.lastLogin = new Date().toISOString();
+    // Update password
+    userData.passwordHash = newPasswordHash;
     
-    // Save updated user data
+    // Save updated user
     await put(
       `users/${usernameLower}.json`,
       JSON.stringify(userData, null, 2),
@@ -67,26 +74,15 @@ export default async function handler(req, res) {
       }
     );
     
-    console.log('User logged in:', userData.username);
+    console.log('Password changed for:', userData.username);
     
-    // Return user data
     return res.status(200).json({
       success: true,
-      user: {
-        username: userData.username,
-        email: userData.email,
-        privateKey: privateKey,
-        funderAddress: userData.funderAddress,
-        theme: userData.theme,
-        role: userData.role,
-        stats: userData.stats,
-        createdAt: userData.createdAt,
-        lastLogin: userData.lastLogin
-      }
+      message: 'Password changed successfully'
     });
     
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Change password error:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
       details: error.message 

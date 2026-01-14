@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Polymarket Bot - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -468,17 +469,18 @@
             color: #ef4444;
         }
         
-        /* Charts placeholder */
+        /* Charts */
         .chart-container {
             background: rgba(10, 10, 15, 0.5);
             border-radius: 12px;
             padding: 20px;
             height: 300px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #94a3b8;
+            position: relative;
             margin-bottom: 20px;
+        }
+        
+        .chart-container canvas {
+            max-height: 260px;
         }
         
         /* Hero Landing */
@@ -493,6 +495,7 @@
             margin-bottom: 20px;
             background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
         
@@ -674,7 +677,7 @@
 
                     <h3 style="margin-bottom: 15px;">Profit Chart</h3>
                     <div class="chart-container">
-                        📊 Chart wird geladen... (Coming Soon)
+                        <canvas id="profitChart"></canvas>
                     </div>
 
                     <h3 style="margin-bottom: 15px;">Letzte Aktivitäten</h3>
@@ -781,7 +784,7 @@
 
                     <h3 style="margin-top: 30px; margin-bottom: 15px;">Trading Historie</h3>
                     <div class="chart-container">
-                        📈 Historisches Chart (Coming Soon)
+                        <canvas id="historyChart"></canvas>
                     </div>
                 </div>
 
@@ -829,7 +832,7 @@
 
                     <h3 style="margin-top: 30px; margin-bottom: 15px;">Passwort ändern</h3>
                     <div style="background: rgba(10, 10, 15, 0.5); border-radius: 12px; padding: 25px;">
-                        <button class="btn btn-primary">🔒 Passwort ändern</button>
+                        <button class="btn btn-primary" onclick="showChangePassword()">🔒 Passwort ändern</button>
                     </div>
                 </div>
 
@@ -907,6 +910,96 @@
         </div>
     </div>
 
+    <!-- View User Modal -->
+    <div class="modal" id="viewUserModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>User Details</h2>
+                <button class="close-btn" onclick="closeModals()">&times;</button>
+            </div>
+            <div id="viewUserContent">
+                <div style="text-align: center; padding: 20px;">
+                    Lade Daten...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal" id="changePasswordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Passwort ändern</h2>
+                <button class="close-btn" onclick="closeModals()">&times;</button>
+            </div>
+            <div class="form-message" id="changePasswordMessage"></div>
+            <form onsubmit="handleChangePassword(event)">
+                <div class="form-group">
+                    <label>Aktuelles Passwort</label>
+                    <input type="password" id="currentPassword" required>
+                </div>
+                <div class="form-group">
+                    <label>Neues Passwort</label>
+                    <input type="password" id="newPassword" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>Neues Passwort bestätigen</label>
+                    <input type="password" id="confirmPassword" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;" id="changePasswordBtn">
+                    Passwort ändern
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal" id="editUserModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>User Bearbeiten</h2>
+                <button class="close-btn" onclick="closeModals()">&times;</button>
+            </div>
+            <div class="form-message" id="editUserMessage"></div>
+            <form onsubmit="handleEditUser(event)">
+                <input type="hidden" id="editUsername">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="editEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Rolle</label>
+                    <select id="editRole" required>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Theme</label>
+                    <select id="editTheme" required>
+                        <option value="Cyberpunk">Cyberpunk</option>
+                        <option value="Ocean">Ocean</option>
+                        <option value="Forest">Forest</option>
+                        <option value="Sunset">Sunset</option>
+                        <option value="Purple">Purple</option>
+                        <option value="Midnight">Midnight</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Total Profit</label>
+                    <input type="number" step="0.01" id="editTotalProfit" required>
+                </div>
+                <div class="form-group">
+                    <label>Total Trades</label>
+                    <input type="number" id="editTotalTrades" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;" id="editUserBtn">
+                    Speichern
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Register Modal -->
     <div class="modal" id="registerModal">
         <div class="modal-content">
@@ -946,6 +1039,8 @@
     <script>
         const API_URL = window.location.origin + '/api';
         let currentUser = null;
+        let profitChart = null;
+        let historyChart = null;
 
         // Modal functions
         function showLogin() {
@@ -1062,6 +1157,127 @@
             
             // Load stats
             loadUserStats();
+            // Initialize charts
+            initCharts();
+        }
+
+        // Initialize charts
+        function initCharts() {
+            const stats = currentUser.stats || {};
+            
+            // Profit Chart
+            const profitCtx = document.getElementById('profitChart');
+            if (profitChart) profitChart.destroy();
+            
+            const profitData = generateProfitData(stats);
+            profitChart = new Chart(profitCtx, {
+                type: 'line',
+                data: {
+                    labels: profitData.labels,
+                    datasets: [{
+                        label: 'Profit ($)',
+                        data: profitData.values,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#94a3b8' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                        }
+                    }
+                }
+            });
+            
+            // History Chart
+            const historyCtx = document.getElementById('historyChart');
+            if (historyChart) historyChart.destroy();
+            
+            const historyData = generateHistoryData(stats);
+            historyChart = new Chart(historyCtx, {
+                type: 'bar',
+                data: {
+                    labels: historyData.labels,
+                    datasets: [{
+                        label: 'Trades',
+                        data: historyData.values,
+                        backgroundColor: [
+                            'rgba(99, 102, 241, 0.6)',
+                            'rgba(168, 85, 247, 0.6)',
+                            'rgba(16, 185, 129, 0.6)',
+                            'rgba(239, 68, 68, 0.6)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#94a3b8' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Generate profit chart data
+        function generateProfitData(stats) {
+            const totalProfit = stats.totalProfit || 0;
+            const days = 30;
+            const labels = [];
+            const values = [];
+            
+            // Generate last 30 days
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('de-DE', { month: 'short', day: 'numeric' }));
+                
+                // Simulate profit progression (can be replaced with real data)
+                const progress = (days - i) / days;
+                values.push(totalProfit * progress * (0.8 + Math.random() * 0.4));
+            }
+            
+            return { labels, values };
+        }
+        
+        // Generate history chart data
+        function generateHistoryData(stats) {
+            return {
+                labels: ['Bitcoin', 'Ethereum', 'Solana', 'XRP'],
+                values: [
+                    stats.btcTrades || 0,
+                    stats.ethTrades || 0,
+                    stats.solTrades || 0,
+                    stats.xrpTrades || 0
+                ]
+            };
         }
 
         // Load user stats
@@ -1095,6 +1311,11 @@
                 const lastLogin = new Date(currentUser.lastLogin);
                 document.getElementById('settingsLastLogin').textContent = lastLogin.toLocaleString('de-DE');
             }
+            
+            // Update charts if they exist
+            if (profitChart || historyChart) {
+                initCharts();
+            }
         }
 
         // Show section
@@ -1110,6 +1331,15 @@
             // Load admin data if admin section
             if (section === 'admin') {
                 loadAdminUsers();
+            }
+            
+            // Update charts if stats section
+            if (section === 'stats') {
+                setTimeout(() => {
+                    if (profitChart || historyChart) {
+                        initCharts();
+                    }
+                }, 100);
             }
         }
 
@@ -1179,24 +1409,209 @@
         }
 
         // Admin functions
-        function viewUser(username) {
-            alert(`View user: ${username}\n(Coming Soon)`);
+        async function viewUser(username) {
+            try {
+                const response = await fetch(API_URL + '/admin/users', {
+                    headers: {
+                        'Authorization': 'Bearer admin123'
+                    }
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                
+                const user = data.users.find(u => u.username === username);
+                if (!user) {
+                    alert('User nicht gefunden');
+                    return;
+                }
+                
+                const created = new Date(user.createdAt).toLocaleString('de-DE');
+                const lastLogin = user.lastLogin ? new Date(user.lastLogin).toLocaleString('de-DE') : 'Nie';
+                
+                document.getElementById('viewUserContent').innerHTML = `
+                    <div style="background: rgba(10, 10, 15, 0.5); border-radius: 12px; padding: 25px;">
+                        <div style="margin-bottom: 15px;">
+                            <strong>Username:</strong> ${user.username}
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>Email:</strong> ${user.email}
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>Rolle:</strong> ${user.role === 'admin' ? '👑 Admin' : '👤 User'}
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>Theme:</strong> ${user.theme || 'Nicht gesetzt'}
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>Erstellt:</strong> ${created}
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>Letzter Login:</strong> ${lastLogin}
+                        </div>
+                        <hr style="border-color: #2d2d44; margin: 20px 0;">
+                        <h3 style="margin-bottom: 15px;">Statistiken</h3>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                            <div>
+                                <strong>Total Profit:</strong><br>
+                                <span style="color: #6366f1; font-size: 18px;">$${(user.stats?.totalProfit || 0).toFixed(2)}</span>
+                            </div>
+                            <div>
+                                <strong>Total Trades:</strong><br>
+                                <span style="color: #6366f1; font-size: 18px;">${user.stats?.totalTrades || 0}</span>
+                            </div>
+                            <div>
+                                <strong>BTC Profit:</strong><br>
+                                <span style="color: #94a3b8;">$${(user.stats?.btcProfit || 0).toFixed(2)}</span>
+                            </div>
+                            <div>
+                                <strong>ETH Profit:</strong><br>
+                                <span style="color: #94a3b8;">$${(user.stats?.ethProfit || 0).toFixed(2)}</span>
+                            </div>
+                            <div>
+                                <strong>SOL Profit:</strong><br>
+                                <span style="color: #94a3b8;">$${(user.stats?.solProfit || 0).toFixed(2)}</span>
+                            </div>
+                            <div>
+                                <strong>XRP Profit:</strong><br>
+                                <span style="color: #94a3b8;">$${(user.stats?.xrpProfit || 0).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('viewUserModal').classList.add('active');
+            } catch (error) {
+                alert('Fehler beim Laden: ' + error.message);
+            }
         }
 
-        function editUser(username) {
-            alert(`Edit user: ${username}\n(Coming Soon)`);
+        async function editUser(username) {
+            try {
+                const response = await fetch(API_URL + '/admin/users', {
+                    headers: {
+                        'Authorization': 'Bearer admin123'
+                    }
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                
+                const user = data.users.find(u => u.username === username);
+                if (!user) {
+                    alert('User nicht gefunden');
+                    return;
+                }
+                
+                document.getElementById('editUsername').value = user.username;
+                document.getElementById('editEmail').value = user.email;
+                document.getElementById('editRole').value = user.role || 'user';
+                document.getElementById('editTheme').value = user.theme || 'Midnight';
+                document.getElementById('editTotalProfit').value = user.stats?.totalProfit || 0;
+                document.getElementById('editTotalTrades').value = user.stats?.totalTrades || 0;
+                
+                document.getElementById('editUserModal').classList.add('active');
+            } catch (error) {
+                alert('Fehler beim Laden: ' + error.message);
+            }
+        }
+        
+        async function handleEditUser(e) {
+            e.preventDefault();
+            const btn = document.getElementById('editUserBtn');
+            const message = document.getElementById('editUserMessage');
+            
+            btn.disabled = true;
+            btn.textContent = 'Speichere...';
+            
+            const data = {
+                username: document.getElementById('editUsername').value,
+                email: document.getElementById('editEmail').value,
+                role: document.getElementById('editRole').value,
+                theme: document.getElementById('editTheme').value,
+                stats: {
+                    totalProfit: parseFloat(document.getElementById('editTotalProfit').value),
+                    totalTrades: parseInt(document.getElementById('editTotalTrades').value)
+                }
+            };
+            
+            try {
+                const response = await fetch(API_URL + '/admin/edit-user', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    message.className = 'form-message success';
+                    message.textContent = 'User erfolgreich aktualisiert!';
+                    message.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        closeModals();
+                        loadAdminUsers();
+                    }, 1500);
+                } else {
+                    throw new Error(result.error || 'Fehler beim Speichern');
+                }
+            } catch (error) {
+                message.className = 'form-message error';
+                message.textContent = error.message;
+                message.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Speichern';
+            }
         }
 
-        function deleteUser(username) {
-            if (confirm(`User "${username}" wirklich löschen?`)) {
-                alert('Delete user functionality coming soon!');
+        async function deleteUser(username) {
+            if (!confirm(`User "${username}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_URL + '/admin/delete-user', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({ username })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('User erfolgreich gelöscht!');
+                    loadAdminUsers();
+                } else {
+                    throw new Error(result.error || 'Fehler beim Löschen');
+                }
+            } catch (error) {
+                alert('Fehler beim Löschen: ' + error.message);
             }
         }
 
         // Download bot
-        function downloadBot() {
-            alert('Bot Download wird vorbereitet...\n\nDu bekommst gleich einen Download-Link!');
-            // Here you would trigger actual download
+        async function downloadBot() {
+            try {
+                const response = await fetch(API_URL + '/download/latest');
+                const data = await response.json();
+                
+                if (response.ok && data.downloadUrl) {
+                    window.open(data.downloadUrl, '_blank');
+                } else {
+                    // Fallback: show info
+                    alert(`Bot Version: ${data.version || 'v25'}\n\nDownload-Link wird vorbereitet...\n\nFalls kein Link verfügbar ist, kontaktiere den Administrator.`);
+                }
+            } catch (error) {
+                alert('Fehler beim Laden der Download-Informationen. Bitte versuche es später erneut.');
+            }
         }
 
         // Export stats
@@ -1233,6 +1648,67 @@ Total,${stats.totalProfit || 0},${stats.totalTrades || 0}`;
         // Change theme
         function changeTheme(theme) {
             alert(`Theme "${theme}" ausgewählt!\n\nWird beim nächsten Bot-Start aktiv.`);
+        }
+        
+        // Show change password modal
+        function showChangePassword() {
+            closeModals();
+            document.getElementById('changePasswordModal').classList.add('active');
+        }
+        
+        // Handle password change
+        async function handleChangePassword(e) {
+            e.preventDefault();
+            const btn = document.getElementById('changePasswordBtn');
+            const message = document.getElementById('changePasswordMessage');
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                message.className = 'form-message error';
+                message.textContent = 'Neue Passwörter stimmen nicht überein!';
+                message.style.display = 'block';
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'Ändere Passwort...';
+            
+            try {
+                const response = await fetch(API_URL + '/user/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: currentUser.username,
+                        currentPassword: currentPassword,
+                        newPassword: newPassword
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    message.className = 'form-message success';
+                    message.textContent = 'Passwort erfolgreich geändert!';
+                    message.style.display = 'block';
+                    e.target.reset();
+                    
+                    setTimeout(() => {
+                        closeModals();
+                    }, 2000);
+                } else {
+                    throw new Error(result.error || 'Fehler beim Ändern des Passworts');
+                }
+            } catch (error) {
+                message.className = 'form-message error';
+                message.textContent = error.message;
+                message.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Passwort ändern';
+            }
         }
 
         // Logout

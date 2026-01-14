@@ -73,9 +73,13 @@ export default async function handler(req, res) {
         totalTrades: 0,
         winningTrades: 0,
         btcProfit: 0,
+        btcTrades: 0,
         ethProfit: 0,
+        ethTrades: 0,
         solProfit: 0,
-        xrpProfit: 0
+        solTrades: 0,
+        xrpProfit: 0,
+        xrpTrades: 0
       }
     };
     
