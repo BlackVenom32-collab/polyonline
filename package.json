@@ -1,7 +1,10 @@
 {
   "name": "polymarket-bot-backend",
   "version": "1.0.0",
-  "description": "Polymarket Trading Bot Backend with Vercel Blob Storage",
+  "type": "module",
+  "engines": {
+    "node": ">=18.x"
+  },
   "dependencies": {
     "@vercel/blob": "^0.23.0"
   }
