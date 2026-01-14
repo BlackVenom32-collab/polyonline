@@ -1,6 +1,5 @@
 // api/admin/users.js
-const { kv } = require('@vercel/kv');
-const crypto = require('crypto');
+const { list, download } = require('@vercel/blob');
 
 // ADMIN PASSWORD - ÄNDERE DAS!
 const ADMIN_PASSWORD = 'admin123';  // <-- HIER ÄNDERN!
@@ -32,28 +31,31 @@ module.exports = async (req, res) => {
       return res.status(401).json({ error: 'Invalid admin password' });
     }
     
-    // Get all usernames
-    const usernames = await kv.smembers('users');
+    // Get all user files
+    const { blobs } = await list({ prefix: 'users/' });
     
-    if (!usernames || usernames.length === 0) {
+    if (!blobs || blobs.length === 0) {
       return res.status(200).json({ users: [] });
     }
     
-    // Get all user data
+    // Download all user data
     const users = [];
-    for (const username of usernames) {
-      const userData = await kv.get(`user:${username}`);
-      if (userData) {
-        const user = typeof userData === 'string' ? JSON.parse(userData) : userData;
+    for (const blob of blobs) {
+      try {
+        const userBlob = await download(blob.url);
+        const userData = await userBlob.json();
+        
         users.push({
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          theme: user.theme,
-          createdAt: user.createdAt,
-          lastLogin: user.lastLogin,
-          stats: user.stats
+          username: userData.username,
+          email: userData.email,
+          role: userData.role,
+          theme: userData.theme,
+          createdAt: userData.createdAt,
+          lastLogin: userData.lastLogin,
+          stats: userData.stats
         });
+      } catch (e) {
+        console.error('Error loading user:', e);
       }
     }
     

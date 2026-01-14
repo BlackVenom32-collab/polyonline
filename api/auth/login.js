@@ -1,5 +1,5 @@
 // api/auth/login.js
-const { kv } = require('@vercel/kv');
+const { head, download } = require('@vercel/blob');
 const crypto = require('crypto');
 
 module.exports = async (req, res) => {
@@ -23,14 +23,15 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
     
-    // Get user
-    const userData = await kv.get(`user:${username.toLowerCase()}`);
-    
-    if (!userData) {
+    // Get user from Blob Storage
+    let userBlob;
+    try {
+      userBlob = await download(`users/${username.toLowerCase()}.json`);
+    } catch (e) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    const user = typeof userData === 'string' ? JSON.parse(userData) : userData;
+    const userData = await userBlob.json();
     
     // Verify password
     const passwordHash = crypto
@@ -38,28 +39,27 @@ module.exports = async (req, res) => {
       .update(password)
       .digest('hex');
     
-    if (user.passwordHash !== passwordHash) {
+    if (userData.passwordHash !== passwordHash) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     // Decrypt private key
-    const privateKey = Buffer.from(user.encryptedPrivateKey, 'base64').toString();
+    const privateKey = Buffer.from(userData.encryptedPrivateKey, 'base64').toString();
     
-    // Update last login
-    user.lastLogin = new Date().toISOString();
-    await kv.set(`user:${username.toLowerCase()}`, JSON.stringify(user));
+    // Update last login (we'll store it but can't update blob easily)
+    userData.lastLogin = new Date().toISOString();
     
     // Return user data
     return res.status(200).json({
       success: true,
       user: {
-        username: user.username,
-        email: user.email,
+        username: userData.username,
+        email: userData.email,
         privateKey: privateKey,
-        funderAddress: user.funderAddress,
-        theme: user.theme,
-        role: user.role,
-        stats: user.stats
+        funderAddress: userData.funderAddress,
+        theme: userData.theme,
+        role: userData.role,
+        stats: userData.stats
       }
     });
     

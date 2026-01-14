@@ -1,5 +1,5 @@
 // api/stats/update.js
-const { kv } = require('@vercel/kv');
+const { download, put } = require('@vercel/blob');
 const crypto = require('crypto');
 
 module.exports = async (req, res) => {
@@ -24,13 +24,14 @@ module.exports = async (req, res) => {
     }
     
     // Get user
-    const userData = await kv.get(`user:${username.toLowerCase()}`);
-    
-    if (!userData) {
+    let userBlob;
+    try {
+      userBlob = await download(`users/${username.toLowerCase()}.json`);
+    } catch (e) {
       return res.status(401).json({ error: 'User not found' });
     }
     
-    const user = typeof userData === 'string' ? JSON.parse(userData) : userData;
+    const userData = await userBlob.json();
     
     // Verify password
     const passwordHash = crypto
@@ -38,18 +39,23 @@ module.exports = async (req, res) => {
       .update(password)
       .digest('hex');
     
-    if (user.passwordHash !== passwordHash) {
+    if (userData.passwordHash !== passwordHash) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     // Update stats
-    user.stats = {
-      ...user.stats,
+    userData.stats = {
+      ...userData.stats,
       ...stats,
       lastUpdated: new Date().toISOString()
     };
     
-    await kv.set(`user:${username.toLowerCase()}`, JSON.stringify(user));
+    // Save updated user
+    await put(
+      `users/${username.toLowerCase()}.json`,
+      JSON.stringify(userData),
+      { access: 'public', addRandomSuffix: false }
+    );
     
     return res.status(200).json({
       success: true,

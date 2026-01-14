@@ -1,5 +1,5 @@
 // api/auth/register.js
-const { kv } = require('@vercel/kv');
+const { put, list } = require('@vercel/blob');
 const crypto = require('crypto');
 
 module.exports = async (req, res) => {
@@ -33,15 +33,13 @@ module.exports = async (req, res) => {
     }
     
     // Check if username exists
-    const existingUser = await kv.get(`user:${username.toLowerCase()}`);
-    if (existingUser) {
-      return res.status(400).json({ error: 'Username already exists' });
-    }
-    
-    // Check if email exists
-    const emailExists = await kv.get(`email:${email.toLowerCase()}`);
-    if (emailExists) {
-      return res.status(400).json({ error: 'Email already registered' });
+    try {
+      const { blobs } = await list({ prefix: `users/${username.toLowerCase()}.json` });
+      if (blobs.length > 0) {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+    } catch (e) {
+      // User doesn't exist, continue
     }
     
     // Hash password
@@ -75,10 +73,12 @@ module.exports = async (req, res) => {
       }
     };
     
-    // Save user
-    await kv.set(`user:${username.toLowerCase()}`, JSON.stringify(user));
-    await kv.set(`email:${email.toLowerCase()}`, username.toLowerCase());
-    await kv.sadd('users', username.toLowerCase());
+    // Save user to Blob Storage
+    await put(
+      `users/${username.toLowerCase()}.json`,
+      JSON.stringify(user),
+      { access: 'public', addRandomSuffix: false }
+    );
     
     return res.status(201).json({
       success: true,

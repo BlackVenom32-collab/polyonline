@@ -1,5 +1,5 @@
 // api/download/latest.js
-const { kv } = require('@vercel/kv');
+const { download, put } = require('@vercel/blob');
 
 module.exports = async (req, res) => {
   // CORS headers
@@ -16,12 +16,14 @@ module.exports = async (req, res) => {
   }
   
   try {
-    // Get latest version info
-    let latestVersion = await kv.get('bot:latest_version');
-    
-    if (!latestVersion) {
-      // Set default version info
-      const defaultVersion = {
+    // Try to get version info
+    let versionData;
+    try {
+      const versionBlob = await download('config/version.json');
+      versionData = await versionBlob.json();
+    } catch (e) {
+      // Create default version
+      versionData = {
         version: 'v25',
         releaseDate: new Date().toISOString(),
         downloadUrl: 'https://github.com/YOUR_USERNAME/polymarket-bot/releases/latest',
@@ -36,13 +38,15 @@ module.exports = async (req, res) => {
         requiresAuth: true
       };
       
-      await kv.set('bot:latest_version', JSON.stringify(defaultVersion));
-      latestVersion = defaultVersion;
-    } else if (typeof latestVersion === 'string') {
-      latestVersion = JSON.parse(latestVersion);
+      // Save default version
+      await put(
+        'config/version.json',
+        JSON.stringify(versionData),
+        { access: 'public', addRandomSuffix: false }
+      );
     }
     
-    return res.status(200).json(latestVersion);
+    return res.status(200).json(versionData);
     
   } catch (error) {
     console.error('Download info error:', error);
