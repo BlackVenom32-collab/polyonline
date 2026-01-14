@@ -1,9 +1,9 @@
 // api/auth/login.js
-const { head, download } = require('@vercel/blob');
-const crypto = require('crypto');
+import { head } from '@vercel/blob';
+import crypto from 'crypto';
 
-module.exports = async (req, res) => {
-  // CORS headers
+export default async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -23,15 +23,23 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
     
-    // Get user from Blob Storage
-    let userBlob;
+    const usernameLower = username.toLowerCase();
+    
+    // Get user blob URL
+    let blobInfo;
     try {
-      userBlob = await download(`users/${username.toLowerCase()}.json`);
+      blobInfo = await head(`users/${usernameLower}.json`);
     } catch (e) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    const userData = await userBlob.json();
+    // Fetch user data from blob URL
+    const response = await fetch(blobInfo.url);
+    if (!response.ok) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const userData = await response.json();
     
     // Verify password
     const passwordHash = crypto
@@ -46,8 +54,7 @@ module.exports = async (req, res) => {
     // Decrypt private key
     const privateKey = Buffer.from(userData.encryptedPrivateKey, 'base64').toString();
     
-    // Update last login (we'll store it but can't update blob easily)
-    userData.lastLogin = new Date().toISOString();
+    console.log('User logged in:', userData.username);
     
     // Return user data
     return res.status(200).json({
@@ -65,6 +72,9 @@ module.exports = async (req, res) => {
     
   } catch (error) {
     console.error('Login error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message 
+    });
   }
-};
+}

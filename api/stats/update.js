@@ -1,9 +1,9 @@
 // api/stats/update.js
-const { download, put } = require('@vercel/blob');
-const crypto = require('crypto');
+import { head, put } from '@vercel/blob';
+import crypto from 'crypto';
 
-module.exports = async (req, res) => {
-  // CORS headers
+export default async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -23,15 +23,23 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
-    // Get user
-    let userBlob;
+    const usernameLower = username.toLowerCase();
+    
+    // Get user blob
+    let blobInfo;
     try {
-      userBlob = await download(`users/${username.toLowerCase()}.json`);
+      blobInfo = await head(`users/${usernameLower}.json`);
     } catch (e) {
       return res.status(401).json({ error: 'User not found' });
     }
     
-    const userData = await userBlob.json();
+    // Fetch current user data
+    const response = await fetch(blobInfo.url);
+    if (!response.ok) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    
+    const userData = await response.json();
     
     // Verify password
     const passwordHash = crypto
@@ -52,10 +60,15 @@ module.exports = async (req, res) => {
     
     // Save updated user
     await put(
-      `users/${username.toLowerCase()}.json`,
-      JSON.stringify(userData),
-      { access: 'public', addRandomSuffix: false }
+      `users/${usernameLower}.json`,
+      JSON.stringify(userData, null, 2),
+      { 
+        access: 'public',
+        addRandomSuffix: false
+      }
     );
+    
+    console.log('Stats updated for:', userData.username);
     
     return res.status(200).json({
       success: true,
@@ -64,6 +77,9 @@ module.exports = async (req, res) => {
     
   } catch (error) {
     console.error('Stats update error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message 
+    });
   }
-};
+}

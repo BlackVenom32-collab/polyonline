@@ -1,13 +1,13 @@
 // api/admin/users.js
-const { list, download } = require('@vercel/blob');
+import { list } from '@vercel/blob';
 
 // ADMIN PASSWORD - ÄNDERE DAS!
 const ADMIN_PASSWORD = 'admin123';  // <-- HIER ÄNDERN!
 
-module.exports = async (req, res) => {
-  // CORS headers
+export default async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
   if (req.method === 'OPTIONS') {
@@ -38,12 +38,14 @@ module.exports = async (req, res) => {
       return res.status(200).json({ users: [] });
     }
     
-    // Download all user data
+    // Fetch all user data
     const users = [];
     for (const blob of blobs) {
       try {
-        const userBlob = await download(blob.url);
-        const userData = await userBlob.json();
+        const response = await fetch(blob.url);
+        if (!response.ok) continue;
+        
+        const userData = await response.json();
         
         users.push({
           username: userData.username,
@@ -59,10 +61,15 @@ module.exports = async (req, res) => {
       }
     }
     
+    console.log(`Admin accessed user list: ${users.length} users`);
+    
     return res.status(200).json({ users });
     
   } catch (error) {
     console.error('Admin users error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message 
+    });
   }
-};
+}

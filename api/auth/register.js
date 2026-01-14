@@ -1,9 +1,9 @@
 // api/auth/register.js
-const { put, list } = require('@vercel/blob');
-const crypto = require('crypto');
+import { put, list } from '@vercel/blob';
+import crypto from 'crypto';
 
-module.exports = async (req, res) => {
-  // CORS headers
+export default async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -32,14 +32,20 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
     
+    const usernameLower = username.toLowerCase();
+    
     // Check if username exists
     try {
-      const { blobs } = await list({ prefix: `users/${username.toLowerCase()}.json` });
-      if (blobs.length > 0) {
+      const { blobs } = await list({ 
+        prefix: `users/${usernameLower}`,
+        limit: 1
+      });
+      
+      if (blobs && blobs.length > 0) {
         return res.status(400).json({ error: 'Username already exists' });
       }
-    } catch (e) {
-      // User doesn't exist, continue
+    } catch (listError) {
+      console.log('List error (ok if first user):', listError.message);
     }
     
     // Hash password
@@ -48,12 +54,12 @@ module.exports = async (req, res) => {
       .update(password)
       .digest('hex');
     
-    // Encrypt private key
+    // Encrypt private key (simple base64)
     const encryptedKey = Buffer.from(private_key).toString('base64');
     
     // Create user object
     const user = {
-      username: username.toLowerCase(),
+      username: usernameLower,
       email: email.toLowerCase(),
       passwordHash,
       encryptedPrivateKey: encryptedKey,
@@ -73,12 +79,17 @@ module.exports = async (req, res) => {
       }
     };
     
-    // Save user to Blob Storage
-    await put(
-      `users/${username.toLowerCase()}.json`,
-      JSON.stringify(user),
-      { access: 'public', addRandomSuffix: false }
+    // Save to Blob
+    const blob = await put(
+      `users/${usernameLower}.json`,
+      JSON.stringify(user, null, 2),
+      { 
+        access: 'public',
+        addRandomSuffix: false
+      }
     );
+    
+    console.log('User created:', blob.url);
     
     return res.status(201).json({
       success: true,
@@ -88,6 +99,9 @@ module.exports = async (req, res) => {
     
   } catch (error) {
     console.error('Registration error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message 
+    });
   }
-};
+}

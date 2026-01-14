@@ -1,8 +1,8 @@
 // api/download/latest.js
-const { download, put } = require('@vercel/blob');
+import { head, put } from '@vercel/blob';
 
-module.exports = async (req, res) => {
-  // CORS headers
+export default async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -18,9 +18,11 @@ module.exports = async (req, res) => {
   try {
     // Try to get version info
     let versionData;
+    
     try {
-      const versionBlob = await download('config/version.json');
-      versionData = await versionBlob.json();
+      const blobInfo = await head('config/version.json');
+      const response = await fetch(blobInfo.url);
+      versionData = await response.json();
     } catch (e) {
       // Create default version
       versionData = {
@@ -41,8 +43,11 @@ module.exports = async (req, res) => {
       // Save default version
       await put(
         'config/version.json',
-        JSON.stringify(versionData),
-        { access: 'public', addRandomSuffix: false }
+        JSON.stringify(versionData, null, 2),
+        { 
+          access: 'public',
+          addRandomSuffix: false
+        }
       );
     }
     
@@ -50,6 +55,9 @@ module.exports = async (req, res) => {
     
   } catch (error) {
     console.error('Download info error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message 
+    });
   }
-};
+}
