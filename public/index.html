@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polymarket Trading Bot - Cloud Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            color: #f1f5f9;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: rgba(30, 30, 48, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 20px 0;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #6366f1;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo-icon {
+            font-size: 40px;
+        }
+        
+        .logo-text h1 {
+            font-size: 24px;
+            color: #6366f1;
+        }
+        
+        .logo-text p {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        
+        nav {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .nav-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: 2px solid #6366f1;
+            color: #6366f1;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .nav-btn:hover {
+            background: #6366f1;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn.primary {
+            background: #6366f1;
+            color: white;
+        }
+        
+        .hero {
+            text-align: center;
+            padding: 60px 20px;
+            margin-bottom: 60px;
+        }
+        
+        .hero h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero p {
+            font-size: 20px;
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 0 10px;
+        }
+        
+        .btn-primary {
+            background: #6366f1;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #4f46e5;
+            transform: translateY(-2px);
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+        
+        .feature-card {
+            background: rgba(30, 30, 48, 0.6);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid #2d2d44;
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: #6366f1;
+        }
+        
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 60px;
+        }
+        
+        .stat-card {
+            background: rgba(30, 30, 48, 0.6);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #2d2d44;
+        }
+        
+        .stat-number {
+            font-size: 36px;
+            font-weight: 700;
+            color: #6366f1;
+            margin-bottom: 10px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #1a1a2e;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            border: 2px solid #6366f1;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 30px;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: #0a0a0f;
+            border: 1px solid #2d2d44;
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 14px;
+        }
+        
+        .form-message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .form-message.success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+            color: #10b981;
+        }
+        
+        .form-message.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+            border-top: 1px solid #2d2d44;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #2d2d44;
+        }
+        
+        th {
+            background: #0a0a0f;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">🚀</div>
+                <div class="logo-text">
+                    <h1>POLYMARKET BOT</h1>
+                    <p>Cloud Trading Platform</p>
+                </div>
+            </div>
+            <nav>
+                <button class="nav-btn" onclick="showLogin()">Login</button>
+                <button class="nav-btn primary" onclick="showRegister()">Registrieren</button>
+                <button class="nav-btn" onclick="showAdmin()" style="display: none;" id="adminBtn">Admin</button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="hero">
+            <h2>Automatisches Crypto Trading</h2>
+            <p>Trade Bitcoin, Ethereum, Solana & XRP auf Polymarket</p>
+            <button class="btn btn-primary" onclick="showRegister()">Jetzt Starten</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">0</div>
+                <div class="stat-label">Aktive Trader</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalTrades">0</div>
+                <div class="stat-label">Total Trades</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalProfit">$0</div>
+                <div class="stat-label">Total Profit</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">v25</div>
+                <div class="stat-label">Version</div>
+            </div>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3>6 Farbthemen</h3>
+                <p>Personalisiere dein Trading mit schönen Themes</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3>Ein Fenster</h3>
+                <p>Alle Märkte in einem Interface</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3>Cloud Sync</h3>
+                <p>Deine Daten automatisch synchronisiert</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Echtzeit Stats</h3>
+                <p>Live Performance Tracking</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>KI-Powered</h3>
+                <p>Fortgeschrittene Trading Algorithmen</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Blitzschnell</h3>
+                <p>Trade Execution in Millisekunden</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Account Erstellen</h2>
+                <button class="close-btn" onclick="closeModals()">&times;</button>
+            </div>
+            <div class="form-message" id="registerMessage"></div>
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="regUsername" required minlength="3">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="regEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Passwort</label>
+                    <input type="password" id="regPassword" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>Private Key (Polygon Wallet)</label>
+                    <input type="password" id="regPrivateKey" required>
+                </div>
+                <div class="form-group">
+                    <label>Funder Address (Polygon Wallet)</label>
+                    <input type="text" id="regFunder" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;" id="registerBtn">
+                    Account Erstellen
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Login</h2>
+                <button class="close-btn" onclick="closeModals()">&times;</button>
+            </div>
+            <div class="form-message" id="loginMessage"></div>
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="loginUsername" required>
+                </div>
+                <div class="form-group">
+                    <label>Passwort</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Modal -->
+    <div class="modal" id="adminModal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>Admin Dashboard</h2>
+                <button class="close-btn" onclick="closeModals()">&times;</button>
+            </div>
+            <div id="adminContent">Loading...</div>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025 Polymarket Trading Bot. Alle Rechte vorbehalten.</p>
+    </footer>
+
+    <script>
+        const API_URL = window.location.origin + '/api';
+        
+        function showRegister() {
+            closeModals();
+            document.getElementById('registerModal').classList.add('active');
+        }
+        
+        function showLogin() {
+            closeModals();
+            document.getElementById('loginModal').classList.add('active');
+        }
+        
+        function showAdmin() {
+            closeModals();
+            const password = prompt('Admin Passwort:');
+            if (password) {
+                document.getElementById('adminModal').classList.add('active');
+                loadAdminData(password);
+            }
+        }
+        
+        function closeModals() {
+            document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+        }
+        
+        async function handleRegister(e) {
+            e.preventDefault();
+            const btn = document.getElementById('registerBtn');
+            const message = document.getElementById('registerMessage');
+            
+            btn.disabled = true;
+            btn.textContent = 'Erstelle Account...';
+            
+            const data = {
+                username: document.getElementById('regUsername').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                private_key: document.getElementById('regPrivateKey').value,
+                funder_address: document.getElementById('regFunder').value
+            };
+            
+            try {
+                const response = await fetch(API_URL + '/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    message.className = 'form-message success';
+                    message.textContent = 'Account erstellt! Du kannst dich jetzt einloggen.';
+                    message.style.display = 'block';
+                    e.target.reset();
+                } else {
+                    throw new Error(result.error || 'Registrierung fehlgeschlagen');
+                }
+            } catch (error) {
+                message.className = 'form-message error';
+                message.textContent = error.message;
+                message.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Account Erstellen';
+            }
+        }
+        
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const data = {
+                username: document.getElementById('loginUsername').value,
+                password: document.getElementById('loginPassword').value
+            };
+            
+            try {
+                const response = await fetch(API_URL + '/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Login erfolgreich! Lade den Bot herunter und logge dich ein.');
+                    document.getElementById('adminBtn').style.display = 'block';
+                    closeModals();
+                } else {
+                    throw new Error(result.error || 'Login fehlgeschlagen');
+                }
+            } catch (error) {
+                document.getElementById('loginMessage').className = 'form-message error';
+                document.getElementById('loginMessage').textContent = error.message;
+                document.getElementById('loginMessage').style.display = 'block';
+            }
+        }
+        
+        async function loadAdminData(password) {
+            const adminContent = document.getElementById('adminContent');
+            
+            try {
+                const response = await fetch(API_URL + '/admin/users', {
+                    headers: {
+                        'Authorization': 'Bearer ' + password
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) throw new Error(data.error);
+                
+                let html = '<table><thead><tr>';
+                html += '<th>Username</th><th>Email</th><th>Profit</th><th>Trades</th><th>Login</th>';
+                html += '</tr></thead><tbody>';
+                
+                data.users.forEach(user => {
+                    const lastLogin = user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Nie';
+                    html += '<tr>';
+                    html += `<td>${user.username}</td>`;
+                    html += `<td>${user.email}</td>`;
+                    html += `<td>$${user.stats.totalProfit.toFixed(2)}</td>`;
+                    html += `<td>${user.stats.totalTrades}</td>`;
+                    html += `<td>${lastLogin}</td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                adminContent.innerHTML = html;
+                
+                updateGlobalStats(data.users);
+                
+            } catch (error) {
+                adminContent.innerHTML = `<p style="color: #ef4444;">${error.message}</p>`;
+            }
+        }
+        
+        function updateGlobalStats(users) {
+            let totalTrades = 0;
+            let totalProfit = 0;
+            
+            users.forEach(user => {
+                totalTrades += user.stats.totalTrades || 0;
+                totalProfit += user.stats.totalProfit || 0;
+            });
+            
+            document.getElementById('totalUsers').textContent = users.length;
+            document.getElementById('totalTrades').textContent = totalTrades;
+            document.getElementById('totalProfit').textContent = `$${totalProfit.toFixed(2)}`;
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModals();
+        });
+    </script>
+</body>
+</html>

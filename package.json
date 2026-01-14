@@ -1,0 +1,8 @@
+{
+  "name": "polymarket-bot-backend",
+  "version": "1.0.0",
+  "description": "Polymarket Trading Bot Backend",
+  "dependencies": {
+    "@vercel/kv": "^1.0.1"
+  }
+}
