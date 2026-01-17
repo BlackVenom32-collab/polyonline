@@ -855,12 +855,13 @@
         // Initialize charts
         function initCharts() {
             const stats = currentUser.stats || {};
+            const activities = currentUser.activities || [];
             
             // Profit Chart
             const profitCtx = document.getElementById('profitChart');
             if (profitChart) profitChart.destroy();
             
-            const profitData = generateProfitData(stats);
+            const profitData = generateProfitData(stats, activities);
             profitChart = new Chart(profitCtx, {
                 type: 'line',
                 data: {
@@ -880,6 +881,13 @@
                     plugins: {
                         legend: {
                             labels: { color: '#94a3b8' }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Profit: $' + context.parsed.y.toFixed(2);
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -938,21 +946,43 @@
         }
         
         // Generate profit chart data
-        function generateProfitData(stats) {
-            const totalProfit = stats.totalProfit || 0;
-            const days = 30;
+        function generateProfitData(stats, activities) {
             const labels = [];
             const values = [];
+            const days = 30;
+            const moneyRegex = /([-+])\$([0-9.]+)/;
             
             // Generate last 30 days
             for (let i = days - 1; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                labels.push(date.toLocaleDateString('de-DE', { month: 'short', day: 'numeric' }));
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                d.setHours(23, 59, 59, 999);
                 
-                // Simulate profit progression (can be replaced with real data)
-                const progress = (days - i) / days;
-                values.push(totalProfit * progress * (0.8 + Math.random() * 0.4));
+                labels.push(d.toLocaleDateString('de-DE', { month: 'short', day: 'numeric' }));
+                
+                // Calculate profit for this day by reversing history
+                let p = stats.totalProfit || 0;
+                const endOfDayTime = d.getTime();
+                
+                if (activities) {
+                    for (const activity of activities) {
+                        const activityTime = new Date(activity.timestamp).getTime();
+                        
+                        // If activity happened AFTER this day, subtract its effect
+                        if (activityTime > endOfDayTime) {
+                            const match = activity.message.match(moneyRegex);
+                            if (match) {
+                                const sign = match[1] === '+' ? 1 : -1;
+                                const amount = parseFloat(match[2]);
+                                const change = sign * amount;
+                                p -= change;
+                            }
+                        }
+                    }
+                }
+                
+                // Prevent tiny floating point errors
+                values.push(Math.round(p * 100) / 100);
             }
             
             return { labels, values };
