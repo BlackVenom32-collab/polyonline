@@ -126,6 +126,7 @@ export default async function handler(req, res) {
         theme: userData.theme,
         role: userData.role,
         stats: userData.stats,
+        hwid: userData.hwid, // Send HWID back to client to verify it was saved
         createdAt: userData.createdAt,
         lastLogin: userData.lastLogin,
         activities: userData.activities || []
