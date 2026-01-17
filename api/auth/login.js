@@ -34,7 +34,15 @@ export default async function handler(req, res) {
     }
     
     // Fetch user data from blob URL
-    const response = await fetch(blobInfo.url);
+    // Add cache busting query param
+    const fetchUrl = `${blobInfo.url}?ts=${Date.now()}`;
+    const response = await fetch(fetchUrl, {
+      cache: 'no-store', // Disable caching
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
     if (!response.ok) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -57,15 +65,20 @@ export default async function handler(req, res) {
         // First time setup: Bind HWID to account
         userData.hwid = hwid;
         console.log(`HWID bound for ${username}: ${hwid}`);
+        // Ensure it is saved even if something else fails later
       } else if (userData.hwid !== hwid) {
         // HWID Mismatch
         console.warn(`HWID Mismatch for ${username}. Stored: ${userData.hwid}, Incoming: ${hwid}`);
         return res.status(403).json({ error: 'HWID Mismatch. This account is bound to another device.' });
       }
-    } else if (userData.hwid) {
-       // Optional: Enforce HWID if it's already set but not provided (e.g. old client)
-       // For now we might allow it or block it. Let's block to be safe.
-       // return res.status(403).json({ error: 'HWID required.' });
+    } else {
+        // Optional: If client sends no HWID (e.g. older version), what to do?
+        // If account has HWID, we might want to block or warn.
+        if (userData.hwid) {
+            console.warn(`Login attempt without HWID for bound account ${username}`);
+            // Uncomment to enforce:
+            // return res.status(403).json({ error: 'HWID required for this account.' });
+        }
     }
     
     // Decrypt private key
