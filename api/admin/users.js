@@ -52,6 +52,7 @@ export default async function handler(req, res) {
           email: userData.email,
           role: userData.role,
           theme: userData.theme,
+          hwid: userData.hwid || null,  // Expose HWID
           createdAt: userData.createdAt,
           lastLogin: userData.lastLogin,
           stats: userData.stats

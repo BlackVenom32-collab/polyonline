@@ -1311,6 +1311,13 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>Hardware ID (HWID)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="editHWID" readonly style="background: rgba(0,0,0,0.3); color: #94a3b8; cursor: not-allowed;" placeholder="Keine HWID verknüpft">
+                        <button type="button" class="btn btn-danger" id="btnResetHWID" style="white-space: nowrap;">Reset HWID</button>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>Theme</label>
                     <select id="editTheme" required>
                         <option value="Cyberpunk">Cyberpunk</option>
@@ -1886,6 +1893,9 @@
                             <strong>Theme:</strong> ${user.theme || 'Nicht gesetzt'}
                         </div>
                         <div style="margin-bottom: 15px;">
+                            <strong>HWID:</strong> <span style="font-family: monospace; background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 4px;">${user.hwid || 'Nicht verknüpft'}</span>
+                        </div>
+                        <div style="margin-bottom: 15px;">
                             <strong>Erstellt:</strong> ${created}
                         </div>
                         <div style="margin-bottom: 15px;">
@@ -1952,9 +1962,71 @@
                 document.getElementById('editTotalProfit').value = user.stats?.totalProfit || 0;
                 document.getElementById('editTotalTrades').value = user.stats?.totalTrades || 0;
                 
+                // HWID Handling
+                const hwidField = document.getElementById('editHWID');
+                const resetBtn = document.getElementById('btnResetHWID');
+                
+                if (user.hwid) {
+                    hwidField.value = user.hwid;
+                    resetBtn.disabled = false;
+                    resetBtn.onclick = () => resetHWID(user.username);
+                    resetBtn.style.opacity = '1';
+                    resetBtn.style.cursor = 'pointer';
+                } else {
+                    hwidField.value = 'Nicht verknüpft';
+                    resetBtn.disabled = true;
+                    resetBtn.onclick = null;
+                    resetBtn.style.opacity = '0.5';
+                    resetBtn.style.cursor = 'not-allowed';
+                }
+                
                 document.getElementById('editUserModal').classList.add('active');
             } catch (error) {
                 alert('Fehler beim Laden: ' + error.message);
+            }
+        }
+        
+        async function resetHWID(username) {
+            if (!confirm(`HWID für User "${username}" wirklich zurücksetzen?\n\nDer User kann sich danach von einem neuen Gerät einloggen.`)) {
+                return;
+            }
+            
+            const btn = document.getElementById('btnResetHWID');
+            const originalText = btn.textContent;
+            btn.textContent = '...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(API_URL + '/admin/edit-user', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer admin123'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        hwid: null // Explicitly clear HWID
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('editHWID').value = 'Nicht verknüpft';
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                    alert('HWID erfolgreich zurückgesetzt!');
+                    
+                    // Refresh user list in background
+                    loadAdminUsers();
+                } else {
+                    throw new Error(result.error || 'Fehler beim Reset');
+                }
+            } catch (error) {
+                alert('Fehler: ' + error.message);
+            } finally {
+                btn.textContent = originalText;
             }
         }
         

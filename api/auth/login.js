@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   }
   
   try {
-    const { username, password } = req.body;
+    const { username, password, hwid } = req.body;
     
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
@@ -49,6 +49,23 @@ export default async function handler(req, res) {
     
     if (userData.passwordHash !== passwordHash) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // HWID Check
+    if (hwid) {
+      if (!userData.hwid) {
+        // First time setup: Bind HWID to account
+        userData.hwid = hwid;
+        console.log(`HWID bound for ${username}: ${hwid}`);
+      } else if (userData.hwid !== hwid) {
+        // HWID Mismatch
+        console.warn(`HWID Mismatch for ${username}. Stored: ${userData.hwid}, Incoming: ${hwid}`);
+        return res.status(403).json({ error: 'HWID Mismatch. This account is bound to another device.' });
+      }
+    } else if (userData.hwid) {
+       // Optional: Enforce HWID if it's already set but not provided (e.g. old client)
+       // For now we might allow it or block it. Let's block to be safe.
+       // return res.status(403).json({ error: 'HWID required.' });
     }
     
     // Decrypt private key

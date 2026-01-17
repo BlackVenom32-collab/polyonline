@@ -31,7 +31,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Invalid admin password' });
     }
     
-    const { username, email, role, theme, stats } = req.body;
+    const { username, email, role, theme, stats, hwid } = req.body;
     
     if (!username) {
       return res.status(400).json({ error: 'Username required' });
@@ -59,6 +59,16 @@ export default async function handler(req, res) {
     if (email) userData.email = email;
     if (role) userData.role = role;
     if (theme) userData.theme = theme;
+    
+    // Handle HWID Reset/Update
+    // If hwid is explicitly null or empty string, we reset it.
+    if (hwid === null || hwid === "") {
+        userData.hwid = null;
+        console.log(`HWID reset for user ${usernameLower}`);
+    } else if (hwid) {
+        userData.hwid = hwid;
+    }
+    
     if (stats) {
       userData.stats = {
         ...userData.stats,
